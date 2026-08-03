@@ -55,6 +55,7 @@ The dataset contains customer support records including:
 - Python (Pandas)
 - SQL
 - MySQL Workbench
+- SQLAlchemy
 - Power BI
 - VS Code
 - VADER Sentiment Analysis
@@ -133,6 +134,8 @@ Tickets meeting these conditions are automatically flagged for monitoring.
 
 ## SQL Analysis
 
+Cleaned data is loaded into MySQL programmatically via SQLAlchemy (`04_import_to_mysql.py`), rather than through MySQL Workbench's Table Data Import Wizard.
+
 SQL queries were written to analyze:
 
 - Total ticket volume
@@ -149,7 +152,7 @@ SQL queries were written to analyze:
 
 # Power BI Dashboard
 
-The dashboard consists of **three pages**.
+The dashboard consists of **three pages**. The same four slicers — Ticket Status, Ticket Priority, Product Purchased, and Ticket Channel — are placed on all three pages so filtering stays consistent throughout the report. Power BI doesn't sync slicers across pages automatically; this consistency comes from adding the same four slicer visuals to each page individually.
 
 ---
 
@@ -160,7 +163,7 @@ Provides a high-level summary of customer support operations.
 ### KPIs
 
 - Total Tickets
-- Open Tickets
+- Unresolved Tickets (Open + Pending)
 - High Risk Tickets
 - Average Customer Satisfaction
 
@@ -188,7 +191,6 @@ Analyzes operational performance and customer support efficiency.
 
 - Average Resolution Hours
 - Average Customer Satisfaction
-- Average First Response Time
 
 ### Visualizations
 
@@ -214,7 +216,6 @@ Monitors customer sentiment and identifies high-risk unresolved tickets.
 - Sentiment Distribution
 - Risk Level by Priority
 - High Risk Ticket Table
-- AI Recommendation Panel
 
 ---
 
@@ -258,10 +259,10 @@ This workflow demonstrates how business rules can be combined with AI-assisted s
 
 The dashboard enables several operational insights, including:
 
-- Technical Support tickets generated the highest number of customer requests.
+- Technical Issue tickets generated the highest number of customer requests, narrowly ahead of Refund Request (1,472 vs. 1,460).
 - Products with longer average resolution times generally received lower customer satisfaction ratings.
 - High-priority unresolved tickets were more likely to have negative customer sentiment.
-- Email and Chat were the most frequently used customer support channels.
+- Ticket volume was nearly identical across channels — Email (1,797), Social Media (1,785), Phone (1,768), and Chat (1,754) — a spread of under 3% from highest to lowest, so no single channel dominated intake.
 - A small number of products accounted for a large proportion of support tickets, indicating potential product quality or usability issues.
 
 ---
@@ -308,6 +309,7 @@ AI-Customer-Support-Ticket-Analytics/
 
 Potential future enhancements include:
 
+- Build the AI Recommendation Panel on Page 3 (planned but not yet implemented).
 - Connect Power BI directly to MySQL for live reporting.
 - Integrate Power Automate for automated email notifications.
 - Develop a machine learning model for ticket classification.
