@@ -294,7 +294,6 @@ AI-Customer-Support-Ticket-Analytics/
 │
 ├── dashboard/
 │   ├── Customer Support Dashboard.pbix
-│   └── dashboard_screenshots/
 │
 ├── images/
 │
