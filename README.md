@@ -1,154 +1,245 @@
-# AI-Assisted Customer Support Ticket Analytics & Risk Monitoring
+# AI Customer Support Ticket Analytics
 
-A portfolio project using Python, MySQL, SQL, VADER sentiment analysis, and Power BI to explore support workload, customer ratings, and rule-based review priorities.
+A portfolio project using **Python, MySQL, SQL, VADER sentiment analysis, and Power BI** to examine support workload, customer satisfaction, response-to-resolution time, and tickets requiring review.
 
-The analysis retains **8,469 tickets**. It flags **791 unresolved tickets** with High/Critical priority and negative VADER sentiment for review. It does not send notifications or predict whether a ticket will escalate.
+The current dataset contains **8,469 unique tickets**. A transparent rule flags **791 tickets** that are unresolved, have High or Critical priority, and contain negative sentiment. These flags support human review; they are not predictions of escalation or evidence that notifications were sent.
 
-## Business questions
+## Project objectives
 
-- Which issue types, channels, statuses, and priorities account for the support workload?
-- Which products and issue types have lower average customer ratings?
-- How does elapsed time from first response to resolution vary across priorities?
-- Which unresolved tickets meet the defined high-risk rule?
+- Understand how ticket volume varies by issue type, channel, priority, and status.
+- Compare customer satisfaction across products and issue types.
+- Examine the relationship between response-to-resolution time and satisfaction.
+- Identify unresolved tickets that meet the defined high-risk rule.
+- Present findings through a three-page Power BI report.
 
-## Dataset and metric definitions
+## Tools
 
-Dataset source: [Customer Support Ticket Dataset on Kaggle](https://www.kaggle.com/datasets/suraj520/customer-support-ticket-dataset), as identified in the project brief. Download the source CSV and place it at `data/raw/customer_support_tickets.csv`. Review the source's current terms before redistributing its data.
+| Tool | Purpose |
+|---|---|
+| Python, pandas, NumPy | Data inspection, cleaning, and derived fields |
+| VADER | Lexicon-based sentiment scoring of ticket subject and description |
+| MySQL, SQLAlchemy, PyMySQL | Optional database import and SQL analysis |
+| Power BI | Interactive reporting and visual analysis |
 
-The source contains ticket IDs, subject/description, product, priority, status, channel, purchase date, first-response and resolution timestamps, and satisfaction ratings. Customer contact fields are not displayed in the portfolio screenshots. CSVs and imported-data PBIX files are excluded from Git by default; the scripts reproduce the processed files locally.
+VADER is a rule-based NLP baseline. This project does not train a machine-learning model or use a large language model.
 
-| Metric | Definition | Full-dataset result |
-|---|---|---:|
-| Total tickets | One row per unique ticket ID | 8,469 |
-| Unresolved tickets | Open or Pending Customer Response | 5,700 |
-| Unresolved share | Unresolved / all tickets | 67.3% |
-| High-risk tickets | Unresolved + High/Critical priority + Negative sentiment | 791 |
-| High-risk share | High risk / unresolved | 13.9% |
-| Critical high-risk tickets | High risk with Critical priority | 399 |
-| Open high-risk tickets | High risk with Open status | 401 |
-| Average satisfaction | Mean of non-missing ratings from 1 to 5 | 2.99 / 5 |
-| Rated tickets | Records with a valid rating | 2,769 |
-| Average response-to-resolution | Resolution timestamp minus first-response timestamp, valid nonnegative values only | 7.58 hours |
-| Valid duration tickets | Non-missing nonnegative durations | 1,404 |
-| Invalid durations | Resolution precedes first response | 1,365 |
+## Repository structure
 
-These are descriptive results from this dataset, not a live support operation or a measured business improvement.
+```text
+AI-Customer-Support-Ticket-Analytics/
+├── dashboard/
+│   ├── Customer Support Ticket Analytics & AI Risk Monitoring Dashboard.pbix
+│   ├── Executive Overview.png
+│   ├── Support Performance Analysis.png
+│   └── AI Risk Monitoring Dashboard.png
+├── data/
+│   ├── raw/
+│   │   └── customer_support_tickets.csv
+│   └── processed/
+│       ├── support_tickets_clean.csv
+│       └── support_tickets_ai_ready.csv
+├── images/
+│   ├── Automation Workflow Design.jpg
+│   └── Project Workflow.jpg
+├── python/
+│   ├── 01_data_understanding.py
+│   ├── 02_clean_data.py
+│   ├── 03_sentiment_and_risk.py
+│   └── 04_import_to_mysql.py
+├── sql/
+│   ├── 01_create_database.sql
+│   └── 02_analysis.sql
+├── .gitignore
+├── requirement.txt
+└── README.md
+```
 
-## Dashboard
+## Data preparation
 
-The report has three pages and keeps question-style chart titles.
+The current cleaning script:
 
-### Executive Overview
+1. Standardizes column names and removes identical duplicate rows.
+2. Strips whitespace and standardizes selected categorical fields.
+3. Parses purchase dates, first-response timestamps, and resolution timestamps.
+4. Fills missing ages with the median and adds age groups.
+5. Preserves missing satisfaction ratings and excludes ratings outside 1–5.
+6. Calculates `resolution_hours` as resolution timestamp minus first-response timestamp.
+7. Flags negative durations using `invalid_resolution_time`, then sets those durations to missing without deleting the tickets.
+8. Exports the cleaned CSV before sentiment scoring and risk classification.
 
-Shows overall volume, unresolved workload, high-risk count, and average satisfaction, with issue-type, status, channel, and priority breakdowns. The purchase date is not used as a ticket-arrival trend.
-
-![Executive Overview — current report](dashboard/screenshots/01-overview-current.png)
-
-### Support Performance Analysis
-
-Shows response-to-resolution hours, valid-duration count, average satisfaction, and rating count. It includes satisfaction by issue type, duration by priority, the top five products by average satisfaction, and a product-level duration-vs-satisfaction scatterplot. Each scatter point represents one product; its duration and satisfaction averages may use different available records.
-
-![Support Performance — current report](dashboard/screenshots/02-performance-current.png)
-
-### AI Risk Monitoring
-
-Shows high-risk count/share, Critical and Open high-risk counts, high-risk tickets by priority, VADER sentiment distribution, and a review queue without customer contact information. The queue is filtered to `needs_alert = Yes`.
-
-![Risk Monitoring — current report](dashboard/screenshots/03-risk-current.png)
-
-These screenshots show the current working report. The separate [design mockups](design/) and [Power BI finishing guide](docs/POWER_BI_FINISHING_GUIDE.md) describe the proposed final visual refinements; they are not screenshots of an implemented redesign. Slicer visuals are present on each page; cross-page synchronization must be configured explicitly if desired.
-
-## Cleaning and analysis
-
-1. Standardize column names and strip text whitespace.
-2. Remove exact duplicate rows; reject conflicting duplicate ticket IDs.
-3. Parse dates and timestamps.
-4. Retain missing ratings as missing; exclude out-of-range ratings.
-5. Calculate response-to-resolution hours. Flag negative durations and set only the duration to missing, retaining the entire ticket.
-6. Create age groups with explicit boundaries: Under18, 18–25, 26–35, 36–45, 46–60, 61+.
-7. Score subject plus description with VADER and apply transparent risk rules.
-8. Export the AI-ready CSV for Power BI and optional MySQL import.
+The final AI-ready file contains **25 columns**. It adds combined ticket text, sentiment scores and labels, risk levels, and an alert eligibility flag.
 
 ## Sentiment and risk rules
 
-VADER is a lexicon/rule-based sentiment baseline. Compound scores >=0.05 are Positive, <=−0.05 are Negative, and scores between those thresholds are Neutral. The labels have not been validated against a human-reviewed sample and should not be treated as satisfaction ratings or probabilities.
+VADER assigns a compound sentiment score to the combined ticket subject and description.
 
-| Condition | Risk |
+| Compound score | Sentiment |
 |---|---|
-| Unresolved AND High/Critical priority AND Negative sentiment | High Risk |
-| Unresolved AND either High/Critical priority OR Negative sentiment | Medium Risk |
-| Other recognized cases | Low Risk |
+| At least 0.05 | Positive |
+| At most -0.05 | Negative |
+| Between -0.05 and 0.05 | Neutral |
 
-`needs_alert = Yes` identifies High Risk cases eligible for review or a future notification workflow. Missing or unknown status/priority values cause validation to stop rather than silently treating them as unresolved.
+For the recognized statuses in this dataset, unresolved means **Open** or **Pending Customer Response**.
 
-```mermaid
-flowchart TD
-    A[Raw CSV] --> B[Clean and validate]
-    B --> C[VADER sentiment and risk rules]
-    C --> D[Processed CSV]
-    D --> E[Power BI report]
-    D --> F[Optional MySQL upsert]
-    F --> G[SQL analysis]
-    C --> H{Unresolved AND High/Critical AND Negative?}
-    H -->|Yes| I[High Risk / needs_alert Yes]
-    H -->|No| J[Medium or Low Risk / needs_alert No]
-    I --> K[Human review queue]
-    K -. Proposed extension .-> L[Notification service with delivery log]
-```
+| Condition | Risk level |
+|---|---|
+| Unresolved, High/Critical priority, and Negative sentiment | High Risk |
+| Unresolved and either High/Critical priority or Negative sentiment, excluding High Risk above | Medium Risk |
+| Remaining cases | Low Risk |
 
-## Verified findings
+`needs_alert` is `Yes` for High Risk and `No` otherwise. It identifies review candidates; no notification delivery is implemented.
 
-- Refund Request is the largest issue category, **1,752 tickets**, just ahead of Technical Issue, **1,747**. The five issue categories have similar volumes.
-- Channels are also similar: Email **2,143**, Phone **2,132**, Social Media **2,121**, and Chat **2,073**. These counts alone do not justify a major staffing shift.
-- The rule flags **791 tickets**: **399 Critical** and **392 High**; **401 Open** and **390 Pending Customer Response**.
-- **1,365 of 2,769 closed-ticket durations are invalid (49.3%)**. Duration averages therefore describe only the valid subset, not all closed tickets.
-- Ratings average **2.99/5** across **2,769 rated tickets**. Missing responses are excluded rather than scored as zero.
-- Across 42 products, the Pearson correlation between product-average valid duration and product-average satisfaction is approximately **−0.083**. This is weak descriptive evidence, not a causal result; the two averages may come from different samples.
-- The five products with the most tickets account for about **13.4%** of volume. There is no evidence here that a few products dominate support volume, and ticket counts are not defect rates without sales/usage denominators.
+**Implementation limitation:** the current script checks `status != "closed"` rather than validating allowed statuses. Unknown or missing statuses could therefore be treated as unresolved. Input validation is a recommended improvement.
 
-## Recommendations
+## Power BI report
 
-1. Review flagged Critical cases first, while retaining human judgment and validating sentiment labels.
-2. Investigate timestamp inconsistencies before using duration figures for service-level decisions.
-3. Report rating and valid-duration sample sizes beside averages.
-4. Obtain ticket-created timestamps before analyzing arrival trends, backlog age, or full resolution time.
-5. If adding alerts, implement delivery logging and deduplication; a flag alone is not proof of notification.
+### Executive Overview
 
-## Run locally
+Shows total tickets, unresolved tickets, high-risk tickets, average satisfaction, and ticket distributions by issue type, status, channel, and priority.
 
-Use Python 3.10 or later. From the project root:
+### Support Performance Analysis
+
+Shows average response-to-resolution hours, valid duration count, average satisfaction, and rated ticket count. Visuals compare duration by priority, satisfaction by issue type, the five highest-rated products, and product-average duration versus satisfaction.
+
+Each scatterplot point represents one product. Its duration and satisfaction averages can use different sets of available records.
+
+### AI Risk Monitoring Dashboard
+
+Shows high-risk count, high-risk share of unresolved tickets, Critical high-risk tickets, Open high-risk tickets, priority breakdowns, sentiment distribution, and a review queue filtered to `needs_alert = Yes`.
+
+Status, priority, channel, and product slicers support exploration. Cross-page slicer synchronization and button behavior should be checked in Power BI Desktop.
+
+## Key metrics
+
+These values describe the complete processed dataset before dashboard filtering.
+
+| Metric | Result | Definition |
+|---|---:|---|
+| Total tickets | 8,469 | Unique ticket IDs |
+| Unresolved tickets | 5,700 | Open or Pending Customer Response |
+| Unresolved share | 67.3% | Unresolved / all tickets |
+| High-risk tickets | 791 | Tickets meeting the high-risk rule |
+| High-risk share | 13.9% | High risk / unresolved tickets |
+| Critical high-risk tickets | 399 | High-risk tickets with Critical priority |
+| Open high-risk tickets | 401 | High-risk tickets with Open status |
+| Average satisfaction | 2.99 / 5 | Mean of available valid ratings |
+| Rated tickets | 2,769 | Tickets with a valid satisfaction rating |
+| Average response-to-resolution time | 7.58 hours | Mean of available nonnegative durations |
+| Valid duration tickets | 1,404 | Tickets contributing to the duration average |
+| Invalid duration tickets | 1,365 | Resolution timestamp precedes first response |
+
+## Insights and suggested actions
+
+### 1. Most tickets are unresolved in this dataset
+
+There are **5,700 unresolved tickets**, representing **67.3%** of all tickets. This includes **2,819 Open** and **2,881 Pending Customer Response** tickets.
+
+**Suggestion:** separate active support work from cases awaiting a customer reply. Ticket age and historical snapshots would be needed to assess whether the backlog is growing or overdue.
+
+### 2. The risk rule creates a focused review queue
+
+The **791 high-risk tickets** include **399 Critical** and **392 High** priority cases. By status, **401 are Open** and **390 await a customer response**.
+
+**Suggestion:** review Critical cases first and check the underlying text before taking action. The flag is a prioritization rule, not a calibrated probability of escalation.
+
+### 3. Workload is fairly evenly distributed
+
+Refund Request has the most tickets (**1,752**), narrowly ahead of Technical Issue (**1,747**). Channel volumes are also similar: Email **2,143**, Phone **2,132**, Social Media **2,121**, and Chat **2,073**.
+
+**Suggestion:** avoid recommending a major staffing shift from volume alone. Compare handling effort, staffing capacity, and customer outcomes before reallocating resources.
+
+### 4. Satisfaction is close to the middle of the rating scale
+
+Average satisfaction is **2.99/5** across **2,769 rated tickets**, approximately **32.7%** of all tickets. The top five product averages are close together, around **3.20–3.22**.
+
+**Suggestion:** show rating counts alongside averages and use a **0–5 axis** for satisfaction bars. Small differences between products should not be presented as meaningful performance gaps without further analysis.
+
+### 5. Duration quality limits performance conclusions
+
+Of **2,769 closed tickets**, **1,365 (49.3%)** have resolution timestamps earlier than first response. The **7.58-hour** average describes only the **1,404 valid records**.
+
+**Suggestion:** investigate timestamp inconsistencies before using duration averages for operational targets. Keep the valid-record count and exclusion note visible beside duration charts.
+
+### 6. The scatterplot does not establish causation
+
+The product-level scatterplot compares average valid duration with average satisfaction. These averages may come from different tickets, and aggregation can hide variation within a product.
+
+**Suggestion:** use it to explore patterns, not to claim that faster resolution causes higher satisfaction. A follow-up analysis should use tickets with both valid duration and rating data.
+
+## Run the project locally
+
+### 1. Install dependencies
+
+Use Python 3.10 or later. Run these commands from the repository root in PowerShell:
 
 ```powershell
 py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirement.txt
+```
+
+MySQL Server and Power BI Desktop are separate applications and are not installed by this command.
+
+### 2. Prepare and process the data
+
+Ensure `data/raw/customer_support_tickets.csv` is present. Create the output directory if needed:
+
+```powershell
+New-Item -ItemType Directory -Force data/processed
+```
+
+The optional inspection script currently contains an absolute Windows path. Update its `pd.read_csv(...)` path to your local raw CSV before running it:
+
+```powershell
 .\.venv\Scripts\python.exe python/01_data_understanding.py
+```
+
+Run the main pipeline from the repository root:
+
+```powershell
 .\.venv\Scripts\python.exe python/02_clean_data.py
 .\.venv\Scripts\python.exe python/03_sentiment_and_risk.py
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Import `data/processed/support_tickets_ai_ready.csv` into Power BI, or refresh your existing query. It contains 25 columns. If the Source step fixes the count at24, change it to25 or remove that fixed Columns option. Preserve the existing table name to keep measures and visuals connected.
+The scripts write `support_tickets_clean.csv` and `support_tickets_ai_ready.csv` under `data/processed/`.
 
-For MySQL setup and upgrading the old importer, follow [INSTALL.md](docs/INSTALL.md). The new importer uses a password prompt or environment variables, explicit schema, and primary-key upserts. It does not drop the table and does not remove rows absent from an input CSV. Verify totals afterward using `sql/03_validation.sql`.
+### 3. Optional MySQL analysis
 
-## Repository contents
+1. Start MySQL and run `sql/01_create_database.sql` if the database does not already exist.
+2. Configure the connection in `python/04_import_to_mysql.py` for your local server. The current script embeds connection credentials; move them to environment variables or a password prompt before publishing changes.
+3. Run the importer:
 
-```text
-python/          Complete profiling, cleaning, sentiment/risk, and MySQL scripts
-sql/             Schema, analysis queries, and read-only validation
-tests/           Boundary and risk-rule checks
-data/raw/        Download source CSV locally
-data/processed/  Generated locally
-dashboard/       Current screenshots, DAX reference, theme
-design/          Proposed final mockups (not implemented PBIX pages)
-docs/            Installation, review findings, dashboard finishing guide
-requirements.txt
+```powershell
+.\.venv\Scripts\python.exe python/04_import_to_mysql.py
 ```
 
-Keep the existing PBIX locally; this package does not modify or replace its report/model internals. If publishing a PBIX, inspect its embedded data first and explicitly opt it into Git after review.
+4. Select the database and run the analysis queries:
 
-## Validation and limitations
+```sql
+USE customer_support_analytics;
+```
 
-The replacement pipeline was run against the full raw dataset and reproduced the existing 8,469-row IDs, status/priority, sentiment scores/labels, risk flags, missingness, satisfaction values, and durations. Seven focused tests cover timestamp retention, age boundaries, conflicting IDs, unknown status, missing text, sentiment thresholds, and the risk-rule truth table. Import-record serialization was checked separately; MySQL statement execution and live Power BI/DAX execution were not performed during the review.
+Run `sql/02_analysis.sql` in your SQL client after selecting the database.
 
-Human sentiment validation, notification delivery, live monitoring, and measured business impact remain future work.
+**Current importer behavior:** `if_exists="replace"` replaces the `support_tickets` table. It is intended here for a disposable analysis database, not incremental loading into a maintained operational table. The setup SQL currently creates only the database; pandas creates the imported table.
+
+### 4. Open Power BI
+
+1. Open the PBIX in `dashboard/`.
+2. In Power Query, update the CSV source path to your local `data/processed/support_tickets_ai_ready.csv`.
+3. Preserve the existing query/table name to retain visual and measure references.
+4. If the CSV Source step fixes the column count at 24, update it to 25 or remove the fixed count so `needs_alert` is included.
+5. Apply changes and refresh. Compare the unfiltered cards with the metric table above.
+
+## Limitations and next improvements
+
+- **Validation:** add checks for conflicting duplicate IDs, required columns, and allowed status/priority values. These checks are not currently implemented.
+- **Age groups:** fix the current bin boundaries: age 18 is included in the group labelled `Below 18`, and the `60+` label does not accurately describe its greater-than-60 interval.
+- **Text handling:** handle absent subject/description columns and missing text explicitly before sentiment scoring.
+- **Sentiment quality:** validate VADER labels against a manually reviewed sample. Sentiment is not the same measure as a customer satisfaction rating.
+- **Database loading:** replace embedded credentials and table replacement with secure configuration, an explicit schema, and primary-key upserts if incremental loading is required.
+- **Dashboard polish:** clarify the high-risk denominator, set satisfaction bars to 0–5, show duration exclusions, and prioritize the review queue by severity.
+- **Time analysis:** obtain ticket-created timestamps before calculating total resolution time, backlog age, or ticket-arrival trends. Purchase date is not a ticket-created date.
+- **Automation:** notification delivery, deduplication, and delivery logging remain future work. Workflow design images do not establish that these features are implemented.
+- **Testing:** add automated checks for cleaning boundaries and risk rules. This repository currently has no automated test suite.
+
+Results are descriptive findings from the supplied dataset. They do not demonstrate a measured business improvement, predictive accuracy, or a live monitoring deployment.
