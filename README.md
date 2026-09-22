@@ -1,335 +1,154 @@
-# AI-Assisted Customer Support Ticket Analytics & Risk Monitoring Dashboard
+# AI-Assisted Customer Support Ticket Analytics & Risk Monitoring
 
-## Project Overview
+A portfolio project using Python, MySQL, SQL, VADER sentiment analysis, and Power BI to explore support workload, customer ratings, and rule-based review priorities.
 
-Customer support teams receive thousands of support tickets from different channels every day. Identifying urgent customer issues quickly while monitoring overall support performance is essential for maintaining customer satisfaction.
+The analysis retains **8,469 tickets**. It flags **791 unresolved tickets** with High/Critical priority and negative VADER sentiment for review. It does not send notifications or predict whether a ticket will escalate.
 
-This project analyzes customer support ticket data using **Python, SQL, MySQL, and Power BI** to identify customer support trends, evaluate operational performance, classify customer sentiment using AI-assisted analysis, and monitor high-risk unresolved tickets through an interactive dashboard.
+## Business questions
 
----
+- Which issue types, channels, statuses, and priorities account for the support workload?
+- Which products and issue types have lower average customer ratings?
+- How does elapsed time from first response to resolution vary across priorities?
+- Which unresolved tickets meet the defined high-risk rule?
 
-## Business Problem
+## Dataset and metric definitions
 
-Customer support teams often struggle to prioritize urgent customer issues because tickets arrive from multiple channels with different priorities and varying customer sentiment.
+Dataset source: [Customer Support Ticket Dataset on Kaggle](https://www.kaggle.com/datasets/suraj520/customer-support-ticket-dataset), as identified in the project brief. Download the source CSV and place it at `data/raw/customer_support_tickets.csv`. Review the source's current terms before redistributing its data.
 
-Without an effective monitoring system:
+The source contains ticket IDs, subject/description, product, priority, status, channel, purchase date, first-response and resolution timestamps, and satisfaction ratings. Customer contact fields are not displayed in the portfolio screenshots. CSVs and imported-data PBIX files are excluded from Git by default; the scripts reproduce the processed files locally.
 
-- High-priority tickets may remain unresolved for too long.
-- Negative customer experiences may go unnoticed.
-- Managers have limited visibility into support performance and operational risks.
+| Metric | Definition | Full-dataset result |
+|---|---|---:|
+| Total tickets | One row per unique ticket ID | 8,469 |
+| Unresolved tickets | Open or Pending Customer Response | 5,700 |
+| Unresolved share | Unresolved / all tickets | 67.3% |
+| High-risk tickets | Unresolved + High/Critical priority + Negative sentiment | 791 |
+| High-risk share | High risk / unresolved | 13.9% |
+| Critical high-risk tickets | High risk with Critical priority | 399 |
+| Open high-risk tickets | High risk with Open status | 401 |
+| Average satisfaction | Mean of non-missing ratings from 1 to 5 | 2.99 / 5 |
+| Rated tickets | Records with a valid rating | 2,769 |
+| Average response-to-resolution | Resolution timestamp minus first-response timestamp, valid nonnegative values only | 7.58 hours |
+| Valid duration tickets | Non-missing nonnegative durations | 1,404 |
+| Invalid durations | Resolution precedes first response | 1,365 |
 
-This project provides an analytical solution to help support teams monitor performance, identify high-risk tickets, and support faster decision-making.
+These are descriptive results from this dataset, not a live support operation or a measured business improvement.
 
----
+## Dashboard
 
-## Project Objectives
+The report has three pages and keeps question-style chart titles.
 
-- Analyze customer support ticket trends and operational performance.
-- Measure key support KPIs such as ticket volume, customer satisfaction, and resolution time.
-- Apply AI-assisted sentiment analysis to customer ticket descriptions.
-- Identify high-risk unresolved tickets using rule-based risk classification.
-- Build an interactive Power BI dashboard for business monitoring and decision-making.
+### Executive Overview
 
----
+Shows overall volume, unresolved workload, high-risk count, and average satisfaction, with issue-type, status, channel, and priority breakdowns. The purchase date is not used as a ticket-arrival trend.
 
-## Dataset
+![Executive Overview — current report](dashboard/screenshots/01-overview-current.png)
 
-**Source:** Kaggle – Customer Support Ticket Dataset
+### Support Performance Analysis
 
-The dataset contains customer support records including:
+Shows response-to-resolution hours, valid-duration count, average satisfaction, and rating count. It includes satisfaction by issue type, duration by priority, the top five products by average satisfaction, and a product-level duration-vs-satisfaction scatterplot. Each scatter point represents one product; its duration and satisfaction averages may use different available records.
 
-- Ticket Status
-- Ticket Priority
-- Ticket Type
-- Ticket Channel
-- Product Purchased
-- Customer Satisfaction Rating
-- Ticket Description
-- Resolution Details
-- Response Time
+![Support Performance — current report](dashboard/screenshots/02-performance-current.png)
 
----
+### AI Risk Monitoring
 
-## Tools & Technologies
+Shows high-risk count/share, Critical and Open high-risk counts, high-risk tickets by priority, VADER sentiment distribution, and a review queue without customer contact information. The queue is filtered to `needs_alert = Yes`.
 
-- Python (Pandas)
-- SQL
-- MySQL Workbench
-- SQLAlchemy
-- Power BI
-- VS Code
-- VADER Sentiment Analysis
+![Risk Monitoring — current report](dashboard/screenshots/03-risk-current.png)
 
----
+These screenshots show the current working report. The separate [design mockups](design/) and [Power BI finishing guide](docs/POWER_BI_FINISHING_GUIDE.md) describe the proposed final visual refinements; they are not screenshots of an implemented redesign. Slicer visuals are present on each page; cross-page synchronization must be configured explicitly if desired.
 
-## Project Workflow
+## Cleaning and analysis
 
-```
-Raw Dataset
-      │
-      ▼
-Data Cleaning (Python)
-      │
-      ▼
-Feature Engineering
-      │
-      ▼
-AI Sentiment Analysis
-      │
-      ▼
-Risk Classification
-      │
-      ▼
-SQL Analysis (MySQL)
-      │
-      ▼
-Power BI Dashboard
-      │
-      ▼
-Business Insights & Recommendations
-```
+1. Standardize column names and strip text whitespace.
+2. Remove exact duplicate rows; reject conflicting duplicate ticket IDs.
+3. Parse dates and timestamps.
+4. Retain missing ratings as missing; exclude out-of-range ratings.
+5. Calculate response-to-resolution hours. Flag negative durations and set only the duration to missing, retaining the entire ticket.
+6. Create age groups with explicit boundaries: Under18, 18–25, 26–35, 36–45, 46–60, 61+.
+7. Score subject plus description with VADER and apply transparent risk rules.
+8. Export the AI-ready CSV for Power BI and optional MySQL import.
 
----
+## Sentiment and risk rules
 
-## Data Cleaning
+VADER is a lexicon/rule-based sentiment baseline. Compound scores >=0.05 are Positive, <=−0.05 are Negative, and scores between those thresholds are Neutral. The labels have not been validated against a human-reviewed sample and should not be treated as satisfaction ratings or probabilities.
 
-Data preprocessing was performed using **Python Pandas** to prepare an analysis-ready dataset.
+| Condition | Risk |
+|---|---|
+| Unresolved AND High/Critical priority AND Negative sentiment | High Risk |
+| Unresolved AND either High/Critical priority OR Negative sentiment | Medium Risk |
+| Other recognized cases | Low Risk |
 
-The cleaning process included:
+`needs_alert = Yes` identifies High Risk cases eligible for review or a future notification workflow. Missing or unknown status/priority values cause validation to stop rather than silently treating them as unresolved.
 
-- Standardizing column names
-- Removing duplicate records
-- Handling missing values
-- Standardizing text fields
-- Converting date and time columns
-- Creating Resolution Hours
-- Creating Age Group categories
-- Preparing data for SQL and Power BI analysis
-
----
-
-## AI-Assisted Sentiment Analysis
-
-Customer ticket descriptions were analyzed using **VADER Sentiment Analysis**.
-
-Each ticket was classified into one of three categories:
-
-- Positive
-- Neutral
-- Negative
-
-A rule-based risk classification was then applied to identify support tickets requiring immediate attention.
-
-### High Risk Logic
-
-A ticket is classified as **High Risk** when:
-
-- Ticket Priority = High or Critical
-- Ticket Status ≠ Closed
-- Customer Sentiment = Negative
-
-Tickets meeting these conditions are automatically flagged for monitoring.
-
----
-
-## SQL Analysis
-
-Cleaned data is loaded into MySQL programmatically via SQLAlchemy (`04_import_to_mysql.py`), rather than through MySQL Workbench's Table Data Import Wizard.
-
-SQL queries were written to analyze:
-
-- Total ticket volume
-- Ticket status distribution
-- Ticket priority distribution
-- Ticket channel performance
-- Most common ticket types
-- Product complaint trends
-- Customer satisfaction
-- Resolution time
-- High-risk tickets
-
----
-
-# Power BI Dashboard
-
-The dashboard consists of **three pages**. The same four slicers — Ticket Status, Ticket Priority, Product Purchased, and Ticket Channel — are placed on all three pages so filtering stays consistent throughout the report. Power BI doesn't sync slicers across pages automatically; this consistency comes from adding the same four slicer visuals to each page individually.
-
----
-
-## Page 1 — Executive Overview
-
-Provides a high-level summary of customer support operations.
-
-### KPIs
-
-- Total Tickets
-- Unresolved Tickets (Open + Pending)
-- High Risk Tickets
-- Average Customer Satisfaction
-
-### Visualizations
-
-- Monthly Ticket Trend (Line Chart)
-- Ticket Status Distribution (Donut Chart)
-- Tickets by Priority (Bar Chart)
-- Top Products with Most Support Tickets (Bar Chart)
-
-### Filters
-
-- Ticket Status
-- Ticket Priority
-- Product Purchased
-- Ticket Channel
-
----
-
-## Page 2 — Support Performance Analysis
-
-Analyzes operational performance and customer support efficiency.
-
-### KPIs
-
-- Average Resolution Hours
-- Average Customer Satisfaction
-
-### Visualizations
-
-- Most Common Ticket Types
-- Average Resolution Hours by Priority
-- Average Customer Satisfaction by Product
-- Resolution Hours vs Customer Satisfaction (Scatter Plot)
-
----
-
-## Page 3 — AI Risk Monitoring
-
-Monitors customer sentiment and identifies high-risk unresolved tickets.
-
-### KPIs
-
-- High Risk Tickets
-- Negative Sentiment
-- Needs Alert
-
-### Visualizations
-
-- Sentiment Distribution
-- Risk Level by Priority
-- High Risk Ticket Table
-
----
-
-## Automation Workflow Design
-
-The project includes a rule-based workflow to automatically identify tickets requiring immediate attention.
-
-```
-New Ticket
-      │
-      ▼
-Data Cleaning
-      │
-      ▼
-AI Sentiment Analysis
-      │
-      ▼
-Check Ticket Priority
-      │
-      ▼
-Check Ticket Status
-      │
-      ▼
-Negative Sentiment?
-      │
-      ▼
-Yes
-      │
-      ▼
-High Risk Ticket
-      │
-      ▼
-Needs Alert = Yes
+```mermaid
+flowchart TD
+    A[Raw CSV] --> B[Clean and validate]
+    B --> C[VADER sentiment and risk rules]
+    C --> D[Processed CSV]
+    D --> E[Power BI report]
+    D --> F[Optional MySQL upsert]
+    F --> G[SQL analysis]
+    C --> H{Unresolved AND High/Critical AND Negative?}
+    H -->|Yes| I[High Risk / needs_alert Yes]
+    H -->|No| J[Medium or Low Risk / needs_alert No]
+    I --> K[Human review queue]
+    K -. Proposed extension .-> L[Notification service with delivery log]
 ```
 
-This workflow demonstrates how business rules can be combined with AI-assisted sentiment analysis to support faster ticket prioritization.
+## Verified findings
 
----
+- Refund Request is the largest issue category, **1,752 tickets**, just ahead of Technical Issue, **1,747**. The five issue categories have similar volumes.
+- Channels are also similar: Email **2,143**, Phone **2,132**, Social Media **2,121**, and Chat **2,073**. These counts alone do not justify a major staffing shift.
+- The rule flags **791 tickets**: **399 Critical** and **392 High**; **401 Open** and **390 Pending Customer Response**.
+- **1,365 of 2,769 closed-ticket durations are invalid (49.3%)**. Duration averages therefore describe only the valid subset, not all closed tickets.
+- Ratings average **2.99/5** across **2,769 rated tickets**. Missing responses are excluded rather than scored as zero.
+- Across 42 products, the Pearson correlation between product-average valid duration and product-average satisfaction is approximately **−0.083**. This is weak descriptive evidence, not a causal result; the two averages may come from different samples.
+- The five products with the most tickets account for about **13.4%** of volume. There is no evidence here that a few products dominate support volume, and ticket counts are not defect rates without sales/usage denominators.
 
-## Business Insights
+## Recommendations
 
-The dashboard enables several operational insights, including:
+1. Review flagged Critical cases first, while retaining human judgment and validating sentiment labels.
+2. Investigate timestamp inconsistencies before using duration figures for service-level decisions.
+3. Report rating and valid-duration sample sizes beside averages.
+4. Obtain ticket-created timestamps before analyzing arrival trends, backlog age, or full resolution time.
+5. If adding alerts, implement delivery logging and deduplication; a flag alone is not proof of notification.
 
-- Technical Issue tickets generated the highest number of customer requests, narrowly ahead of Refund Request (1,472 vs. 1,460).
-- Products with longer average resolution times generally received lower customer satisfaction ratings.
-- High-priority unresolved tickets were more likely to have negative customer sentiment.
-- Ticket volume was nearly identical across channels — Email (1,797), Social Media (1,785), Phone (1,768), and Chat (1,754) — a spread of under 3% from highest to lowest, so no single channel dominated intake.
-- A small number of products accounted for a large proportion of support tickets, indicating potential product quality or usability issues.
+## Run locally
 
----
+Use Python 3.10 or later. From the project root:
 
-## Business Recommendations
-
-Based on the analysis, the following recommendations were identified:
-
-- Prioritize unresolved High Risk tickets to improve customer satisfaction.
-- Review products generating the highest complaint volumes.
-- Reduce response and resolution times for High Priority tickets.
-- Monitor negative sentiment tickets daily to identify customer pain points.
-- Consider implementing automated notifications for High Risk support cases.
-
----
-
-## Repository Structure
-
-```
-AI-Customer-Support-Ticket-Analytics/
-│
-├── data/
-│   ├── raw/
-│   └── processed/
-│
-├── python/
-│
-├── sql/
-│
-├── dashboard/
-│   ├── Customer Support Dashboard.pbix
-│
-├── images/
-│
-├── README.md
-│
-└── requirements.txt
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe python/01_data_understanding.py
+.\.venv\Scripts\python.exe python/02_clean_data.py
+.\.venv\Scripts\python.exe python/03_sentiment_and_risk.py
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
----
+Import `data/processed/support_tickets_ai_ready.csv` into Power BI, or refresh your existing query. It contains 25 columns. If the Source step fixes the count at24, change it to25 or remove that fixed Columns option. Preserve the existing table name to keep measures and visuals connected.
 
-## Future Improvements
+For MySQL setup and upgrading the old importer, follow [INSTALL.md](docs/INSTALL.md). The new importer uses a password prompt or environment variables, explicit schema, and primary-key upserts. It does not drop the table and does not remove rows absent from an input CSV. Verify totals afterward using `sql/03_validation.sql`.
 
-Potential future enhancements include:
+## Repository contents
 
-- Build the AI Recommendation Panel on Page 3 (planned but not yet implemented).
-- Connect Power BI directly to MySQL for live reporting.
-- Integrate Power Automate for automated email notifications.
-- Develop a machine learning model for ticket classification.
-- Publish the dashboard using Power BI Service.
-- Create real-time monitoring using streaming data.
+```text
+python/          Complete profiling, cleaning, sentiment/risk, and MySQL scripts
+sql/             Schema, analysis queries, and read-only validation
+tests/           Boundary and risk-rule checks
+data/raw/        Download source CSV locally
+data/processed/  Generated locally
+dashboard/       Current screenshots, DAX reference, theme
+design/          Proposed final mockups (not implemented PBIX pages)
+docs/            Installation, review findings, dashboard finishing guide
+requirements.txt
+```
 
----
+Keep the existing PBIX locally; this package does not modify or replace its report/model internals. If publishing a PBIX, inspect its embedded data first and explicitly opt it into Git after review.
 
-## Skills Demonstrated
+## Validation and limitations
 
-- Data Cleaning
-- Exploratory Data Analysis (EDA)
-- SQL Querying
-- Database Management (MySQL)
-- Python (Pandas)
-- AI-Assisted Sentiment Analysis
-- Rule-Based Risk Classification
-- Data Visualization
-- Power BI Dashboard Development
-- Business Intelligence
-- Data Storytelling
-- Business Recommendations
+The replacement pipeline was run against the full raw dataset and reproduced the existing 8,469-row IDs, status/priority, sentiment scores/labels, risk flags, missingness, satisfaction values, and durations. Seven focused tests cover timestamp retention, age boundaries, conflicting IDs, unknown status, missing text, sentiment thresholds, and the risk-rule truth table. Import-record serialization was checked separately; MySQL statement execution and live Power BI/DAX execution were not performed during the review.
 
----
+Human sentiment validation, notification delivery, live monitoring, and measured business impact remain future work.
